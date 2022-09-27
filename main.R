@@ -13,7 +13,7 @@ raw$female <- raw$female - 1
 raw$employ1 <- ifelse(raw$employ < 4, 1, 0)
 raw$marital <- ifelse(raw$marital > 1, 0, 1)
 raw$house <- 2 - raw$house
-raw$tax_house <- 5 - raw$tax_house
+# raw$tax_house <- 5 - raw$tax_house
 raw <- raw %>% 
   mutate(manipulation = ifelse(group == (4 - check), 1, 0),
          mispercept = (sub_decile - obj_decile))
@@ -26,6 +26,8 @@ raw$mispercept2 <- as.numeric(raw$mispercept2)
 
 raw$minju <- ifelse(raw$party == 1, 1, 0)
 raw$kukhim <- ifelse(raw$party == 2, 1, 0)
+raw$minju2 <- ifelse(raw$party == 5 & raw$partylean == 1, 1, raw$minju)
+raw$kukhim2 <- ifelse(raw$party == 5 & raw$partylean == 2, 1, raw$kukhim)
 
 # subsetting data
 ## by group
@@ -45,12 +47,12 @@ positive2 <- positive[positive$manipulation == 1, ]
 nomis2 <- nomis[nomis$manipulation == 1, ]
 # raw2 <- raw[raw$manipulation == 1, ]
 
-# descriptive ------------------------------------------------------------------
-## Summary statistics ----------------------------------------------------------
+# |Table A1| Summary statistics -----------------------------------------------
 stargazer(raw, type = "text",
           out = "summary.html")
 
-## obj_decile mean misperception, proportion of positive and negative misperception
+## |Table 1| obj_decile mean misperception, proportion of positive and negative 
+## misperception
 prop <- raw %>% 
   group_by(obj_decile) %>% 
   count(obj_decile, mispercept2) %>% 
@@ -70,14 +72,13 @@ description <- merge(description, neg_prop, by = "obj_decile", all.x = T)
 
 pd <- ggplot(data = description) + 
   geom_bar(aes(y = mean_dif, x = obj_decile), stat = "identity")
+ggsave(pd, filename = "average_misperception.jpg")
 
 write.table(description, file = "misperception.csv", 
             sep = ",", quote = FALSE, row.names = F)
-xtable(description)
 print.xtable(xtable(description, digits = 2))
 
-## balance test control var ----------------------------------------------------
-
+# |Table 2| balance test control var ------------------------------------------
 ### define user function
 controlvarlist <- c("sub_decile", "obj_decile", "age", "female", "marital",
                     "educ", "house", "employ1", "ideo5", "minju", "kukhim", 
@@ -104,7 +105,12 @@ tidy_t.test <- function(target, varlist){
 t_control <- tidy_t.test(controlt1, controlvarlist)
 
 print(xtable(t_control), include.rownames=FALSE)
-write.table(t_control[c(1,4:7)], file = "balance_con2.csv", sep = ",", quote = FALSE, row.names = F)
+write.table(t_control[c(1,4:7)], 
+            file = "balance_con2.csv", 
+            sep = ",", 
+            quote = FALSE, 
+            row.names = F
+            )
 
 # manipulation checked
 t_control2 <- tidy_t.test(controlt1[controlt1$manipulation == 1, ], controlvarlist)
@@ -112,10 +118,10 @@ t_control2 <- tidy_t.test(controlt1[controlt1$manipulation == 1, ], controlvarli
 print(xtable(t_control2), include.rownames=FALSE)
 write.table(t_control2[c(1,4:7)], file = "balance_con3.csv", sep = ",", quote = FALSE, row.names = F)
 
-## DV t-tests ------------------------------------------------------------------
+# DV t-tests ------------------------------------------------------------------
 t_all_dv <- tidy_t.test(controlt1, dvlist)
 
-## Histograms ------------------------------------------------------------------
+# |Figure 1| Histograms -------------------------------------------------------
 p1 <- ggplot(data = raw) + 
   geom_bar(aes(x = obj_decile), stat = "count") +
   scale_x_continuous(breaks = seq(1, 10, by = 1)) +
@@ -166,8 +172,9 @@ ggsave(p2, filename = "sub_decile_count.jpg")
 # 
 # stargazer(determinants_sub)
 
-# Positive misperception mean difference ---------------------------------------
-## Control vars t-tests --------------------------------------------------------
+# |Table 3| --------------------------------------------------------------------
+## Positive misperception mean difference --------------------------------------
+### Control vars t-tests -------------------------------------------------------
 
 # all control + t1
 t_positive_control <- tidy_t.test(positive, controlvarlist)
@@ -180,7 +187,7 @@ t_positive2_control <- tidy_t.test(positive2, controlvarlist)
 
 print(xtable(t_positive2_control), include.rownames=FALSE)
 write.table(t_positive_control, file = "t_positive_control.csv", sep = ",", row.names = F, col.names = T)
-## DV t-tests ------------------------------------------------------------------
+### DV t-tests ------------------------------------------------------------------
 t_positive_dv <- tidy_t.test(positive, dvlist)
 write.table(t_positive_dv[c(1,4:5,7)], file = "t_positive_dv.csv", sep = ",", row.names = F)
 print(xtable(t_positive_dv), include.rownames=FALSE)
@@ -190,8 +197,8 @@ t_positive2_dv <- tidy_t.test(positive2, dvlist)
 print(xtable(t_positive2_dv), include.rownames=FALSE)
 write.table(t_positive2_dv[c(1:5,7)], file = "t_positive2_dv.csv", sep = ",", row.names = F)
 
-# Negative misperception mean difference ---------------------------------------
-## Control vars t-tests --------------------------------------------------------
+## Negative misperception mean difference --------------------------------------
+### Control vars t-tests --------------------------------------------------------
 # all control + t1
 t_negative_control <- tidy_t.test(negative, controlvarlist)
 
@@ -204,7 +211,7 @@ t_negative2_control <- tidy_t.test(negative2, controlvarlist)
 write.table(t_negative2_control, file = "t_negative2_control.csv", sep = ",", row.names = F, col.names = T)
 print(xtable(t_negative_control), include.rownames=FALSE)
 
-## DV t-tests ------------------------------------------------------------------
+### DV t-tests ------------------------------------------------------------------
 # all control + t1
 t_negative_dv <- tidy_t.test(negative, dvlist)
 
@@ -216,9 +223,8 @@ t_negative2_dv <- tidy_t.test(negative2, dvlist)
 print(xtable(t_negative2_dv), include.rownames=FALSE)
 write.table(t_negative2_dv[c(1:5,7)], file = "t_neg2_dv.csv", sep = ",", row.names = F)
 
-# No misperception mean difference ---------------------------------------
-
-## Control vars t-tests --------------------------------------------------------
+## No misperception mean difference --------------------------------------------
+### Control vars t-tests --------------------------------------------------------
 # all control + t1
 t_nomis_control <- tidy_t.test(nomis, controlvarlist)
 
@@ -231,7 +237,7 @@ t_nomis2_control <- tidy_t.test(nomis2, controlvarlist)
 write.table(t_nomis2_control, file = "t_nomis2_control.csv", sep = ",", row.names = F, col.names = T)
 print(xtable(t_nomis2_control), include.rownames=FALSE)
 
-## DV t-tests ------------------------------------------------------------------
+### DV t-tests -----------------------------------------------------------------
 # all control + t1
 t_nomis_dv <- tidy_t.test(nomis, dvlist)
 print(xtable(t_nomis_dv), include.rownames=FALSE)
@@ -242,7 +248,7 @@ t_nomis2_dv <- tidy_t.test(nomis2, dvlist)
 print(xtable(t_nomis2_dv), include.rownames=FALSE)
 write.table(t_nomis2_dv[c(1:5, 7)], file = "t_no2_dv.csv", sep = ",", row.names = F)
 
-# Falsification Test -----------------------------------------------------------
+## Falsification Test ----------------------------------------------------------
 datalist <- c("positive", "negative", "nomis", "controlt1")
 falsification <- data.frame()
 for(i in datalist){
@@ -259,7 +265,7 @@ falsification <- t(falsification)
 write.table(falsification, file = "falsification.csv", sep = ",", 
             quote = FALSE, row.names = T)
 
-# graph -----
+# |Figure 2| -------------------------------------------------------------------
 controlt1$group3 <- ifelse(controlt1$mispercept2 == 0, "오인 없음", 
                            ifelse(controlt1$mispercept2 == 1, "상향 오인", "하향 오인")) 
 
@@ -326,8 +332,8 @@ ggsave(filename = "정부책입_비교.png",
        height = 3,
        width = 6)
 
-# Regression -------------------
-## deprecated -----
+# |Table 4| & |Table A2| Regression --------------------------------------------
+## deprecated ----------------------
 # lm1 <- lm(duty_gov ~ relevel(factor(group), ref = "3")
 #           + obj_decile + age + female + marital + educ + house + employ1
 #           # + ideo5 + merito + gen_mobile
@@ -441,7 +447,7 @@ lm11 <- lm(redistribute ~
            + obj_decile + age + female + marital + educ + house + employ1
            # + ideo5 + merito + gen_mobile + trust_gov
            + factor(province)
-           , data = controlt1[controlt1$manipulation == 1, ])
+           , data = controlt1)
 
 lm12 <- lm(redistribute ~ 
              relevel(factor(group), ref = "3")*relevel(factor(group3), ref = "오인 없음") 
@@ -450,7 +456,7 @@ lm12 <- lm(redistribute ~
            + obj_decile + age + female + marital + educ + house + employ1
            + ideo5 + merito + gen_mobile + trust_gov
            + factor(province)
-           , data = controlt1[controlt1$manipulation == 1, ])
+           , data = controlt1)
 
 stargazer(lm11, lm12,
           out = "province_fixed_mani.html",
