@@ -105,35 +105,6 @@ p2 <- ggplot(data = raw) +
   theme_minimal()
 ggsave(p2, filename = "../figures/sub_decile_count.jpg")
 
-# p3 <- raw %>% 
-#   group_by(sub_decile) %>% 
-#   summarise(mean = mean(sure), 
-#             se = sd(sure)) %>% 
-#   ggplot(.) +
-#   geom_bar(aes(x = sub_decile, y = mean), stat = "identity") +
-#   geom_errorbar( aes(x=sub_decile, ymin=mean-1.65*se, ymax=mean+1.65*se), 
-#                  width=0.4, colour="black", alpha=0.9, size=1.3) +
-#   scale_x_continuous(breaks = seq(1, 10, by = 1)) +
-#   ylim(c(0, 6)) +
-#   labs(x = "Subjective Decile", y = "Degree of Certainty") +
-#   theme(panel.grid.minor = element_blank(),
-#         text = element_text(size=20))
-# p3
-# 
-# ggsave(p3, filename = "sub_decile_sure.jpg")
-
-# What determines sub_decile? -------------------------------------------------
-# determinants_sub <- lm(sub_decile ~ obj_decile + factor(female) + factor(employ1)
-#                        + factor(house) 
-#                        + relevel(factor(party), ref = 5) 
-#                        + ideo5 + factor(marital) 
-#                        + age + gen_mobile + merito 
-#                        , data = raw)
-# 
-# summary(determinants_sub)
-# 
-# stargazer(determinants_sub)
-
 # |Table 2| balance test control var ------------------------------------------
 ### define user function
 controlvarlist <- c("sub_decile", "obj_decile", "age", "female", "marital",
@@ -338,34 +309,3 @@ controlt1 %>%
 ggsave(filename = "../figures/fig_6_gov_responsibility.pdf", 
        height = 5,
        width = 6)
-
-# # |Table 4| & |Table A2| Regression --------------------------------------------
-# lm11 <- lm(redistribute ~ 
-#              relevel(factor(group2), ref = "control")*relevel(factor(group3), ref = "No Misperception") 
-#            # + minju
-#            # + kukhim
-#            + obj_decile + age + female + marital + educ + house + employ1
-#            # + ideo5 + merito + gen_mobile + trust_gov
-#            + factor(province)
-#            , data = controlt1)
-#
-# lm12 <- lm(redistribute ~ 
-#              relevel(factor(group2), ref = "control")*relevel(factor(group3), ref = "No Misperception") 
-#            + minju
-#            + kukhim
-#            + obj_decile + age + female + marital + educ + house + employ1
-#            + ideo5 + merito + gen_mobile + trust_gov
-#            + factor(province)
-#            , data = controlt1)
-#
-# stargazer(lm11, lm12,
-#           type = "text",
-#           out = "../tables/province_fixed.html",
-#           omit= "province",
-#           order = c(1:3, 33:34, 4:19),
-#           covariate.labels = c("treatment group", 
-#                                "positive mispercept", 
-#                                "negative mispercept",
-#                                "treatment group x positive",
-#                                "trestment group x negative"),
-#           keep.stat = c("n", "rsq"))
