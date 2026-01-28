@@ -1,58 +1,18 @@
-library(dplyr)
-library(broom)
-library(stargazer)
-library(xtable)
-library(ggplot2)
+library("dplyr")
+library("broom")
+library("stargazer")
+library("xtable")
+library("ggplot2")
+library("patchwork")
+library("modelsummary")
 
-# Data preprosessing -----------------------------------------------------------
-raw <- read.csv("../data/정치관련 일반 성인 조사 rawdata.csv")
+source("./preprocessing.R")
 
-# tidying variables 
-raw$female <- raw$female - 1
-raw$employ1 <- ifelse(raw$employ < 4, 1, 0)
-raw$marital <- ifelse(raw$marital > 1, 0, 1)
-raw$house <- 2 - raw$house
-# raw$tax_house <- 5 - raw$tax_house
-raw <- raw %>% 
-  mutate(manipulation = ifelse(group == (4 - check), 1, 0),
-         mispercept = (sub_decile - obj_decile))
-
-raw$mispercept1 <- ifelse(raw$mispercept < 0, -1, 
-                          ifelse(raw$mispercept > 0, 1, 0)
-                          )
-
-raw$mispercept2 <- cut(x = raw$mispercept, 
-                       breaks = c(-10, -2, 1, 10), 
-                       labels = c(-1, 0, 1))
-raw$mispercept2 <- as.character(raw$mispercept2)
-raw$mispercept2 <- as.numeric(raw$mispercept2)
-
-raw$minju <- ifelse(raw$party == 1, 1, 0)
-raw$kukhim <- ifelse(raw$party == 2, 1, 0)
-raw$minju2 <- ifelse(raw$party == 5 & raw$partylean == 1, 1, raw$minju)
-raw$kukhim2 <- ifelse(raw$party == 5 & raw$partylean == 2, 1, raw$kukhim)
-
-# subsetting data
-## by group
-# control <- raw[raw$group2 == "control",]
-# t1 <- raw[raw$group2 == "t1", ]
-# t2 <- raw[raw$group2 == "t2", ]
-controlt1 <- raw[raw$group2 != "t2", ]
-controlt2 <- raw[raw$group2 != "t1", ]
-
-## by misperception
-positive <- raw[raw$group2 != "t2" & raw$mispercept2 == 1, ]
-negative <- raw[raw$group2 != "t2" & raw$mispercept2 == -1, ]
-nomis <- raw[raw$group2 != "t2" & raw$mispercept2 == 0, ]
-
-# Manipulation test subsets
-negative2 <- negative[negative$manipulation == 1, ]
-positive2 <- positive[positive$manipulation == 1, ]
-nomis2 <- nomis[nomis$manipulation == 1, ]
-# raw2 <- raw[raw$manipulation == 1, ]
-
+# ------------------------------------------------------------------------------
 # Descriptive Analysis ---------------------------------------------------------
-## |Table A1| Summary statistics -----------------------------------------------
+# ------------------------------------------------------------------------------
+
+## |Table A2| Summary statistics -----------------------------------------------
 stargazer(raw, type = "text",
           out = "summary.html")
 
@@ -82,20 +42,22 @@ pd <- ggplot(data = description) +
   xlab("Objective Decile") +
   ylab("Average Misperception")
 
-ggsave(pd, filename = "../figures/average_misperception.jpg")
+ggsave(pd, filename = "../figures/average_misperception.pdf")
 
 write.table(description, file = "../data/misperception.csv", 
             sep = ",", quote = F, row.names = F)
-xtable(description, digits = 2)
+description[is.na(description)] <- "-"
+names(description) <- c("Obj Income", "Mean Subj Income", "Mean Diff", "\\% Over", "\\% Under")
+tab1 <- xtable(description, digits = 2)
+print(tab1, file = "../tables/table1.tex")
 
-## |Figure 1| Histograms -------------------------------------------------------
+## |Figure 5| Histograms -------------------------------------------------------
 p1 <- ggplot(data = raw) + 
   geom_bar(aes(x = obj_decile), stat = "count") +
   scale_x_continuous(breaks = seq(1, 10, by = 1)) +
   ylim(0,400) + 
   labs(x = "Objective Income Decile", y = "Count") +
   theme_minimal()
-ggsave(p1, filename = "../figures/obj_decile_count.jpg")
 
 p2 <- ggplot(data = raw) +
   geom_bar(aes(x = sub_decile), stat = "count") +
@@ -103,9 +65,10 @@ p2 <- ggplot(data = raw) +
   ylim(0,400) +
   labs(x = "Subjective Income Decile", y = "Count") +
   theme_minimal()
-ggsave(p2, filename = "../figures/sub_decile_count.jpg")
 
-# |Table 2| balance test control var ------------------------------------------
+ggsave((p1 + p2), file = "../figures/fig5.pdf", width = 10, height = 5)
+
+# |Table A3 & A4| balance test control var ------------------------------------------
 ### define user function
 controlvarlist <- c("sub_decile", "obj_decile", "age", "female", "marital",
                     "educ", "house", "employ1", "ideo5", "minju", "kukhim", 
@@ -129,26 +92,34 @@ tidy_t.test <- function(target, varlist){
 }
 
 # all control + t1
-t_control <- tidy_t.test(controlt1, controlvarlist)
+t1_control <- tidy_t.test(controlt1, controlvarlist)
+t1_control$varname <- c(
+  "Subjective Income", "Objective Income", "Age", "Female", "Marital Status", 
+  "Education", "Home Ownership", "Employment", "Ideology", "Liberal Party",
+  "Conservative Party", "Government Trust", "Meritocracy", "Generational Mobility",
+  "Concern Politics", "Inequality Perception"
+)
+names(t1_control) <- c("Variable", "Mean Diff", "SE", "Control Mean", "T1 Mean", "T-Stat", "p-value")
+tabA3 <- xtable(t1_control[1:11, c(1, 4, 5, 7)], digits = 2)
+print(tabA3, file = "../tables/tabA3_balance_T1.tex")
 
-xtable(t_control, digits = 2)
-write.table(t_control[c(1,4:7)], 
-            file = "../data/balance_con2.csv", 
-            sep = ",", 
-            quote = F, 
-            row.names = F
-            )
+# all control + t2
+t2_control <- tidy_t.test(controlt2, controlvarlist)
+t2_control$varname <- c(
+  "Subjective Income", "Objective Income", "Age", "Female", "Marital Status", 
+  "Education", "Home Ownership", "Employment", "Ideology", "Liberal Party",
+  "Conservative Party", "Government Trust", "Meritocracy", "Generational Mobility",
+  "Concern Politics", "Inequality Perception"
+)
+names(t2_control) <- c("Variable", "Mean Diff", "SE", "Control Mean", "T2 Mean", "T-Stat", "p-value")
+tabA4 <- xtable(t2_control[1:11, c(1, 4, 5, 7)], digits = 2)
+print(tabA3, file = "../tables/tabA4_balance_T2.tex")
 
-# manipulation checked
-t_control2 <- tidy_t.test(controlt1[controlt1$manipulation == 1, ], controlvarlist)
-
-xtable(t_control2, digits = 2)
-write.table(t_control2[c(1,4:7)], file = "../data/balance_con3.csv", sep = ",", quote = F, row.names = F)
-
-# DV t-tests ------------------------------------------------------------------
-t_all_dv <- tidy_t.test(controlt1, dvlist)
-
-
+# # manipulation checked
+# t_control2 <- tidy_t.test(controlt1[controlt1$manipulation == 1, ], controlvarlist)
+#
+# xtable(t_control2, digits = 2)
+# write.table(t_control2[c(1,4:7)], file = "../data/balance_con3.csv", sep = ",", quote = F, row.names = F)
 
 # |Table 3| --------------------------------------------------------------------
 ## Positive misperception mean difference --------------------------------------
